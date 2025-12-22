@@ -1,29 +1,37 @@
 const express = require("express");
-const db = require("../utils/fileDb");
-const { generateActivationKey } = require("../utils/keygen");
-const { ADMIN_SECRET } = require("../config");
+const path = require("path");
+const { v4: uuidv4 } = require("uuid");
+const { write, read } = require("../utils/fileDb");
 
 const router = express.Router();
 
-// Admin guard
-router.use((req, res, next) => {
-  if (req.headers["x-admin-secret"] !== ADMIN_SECRET) {
-    return res.sendStatus(403);
-  }
-  next();
+// Serve admin panel UI
+router.get("/", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "..", "views", "admin.html")
+  );
 });
 
+// Generate activation key (protected)
 router.post("/generate-activation", (req, res) => {
-  const keys = db.read("activationKeys.json");
+  const adminSecret = req.headers["x-admin-secret"];
+
+  if (adminSecret !== process.env.ADMIN_SECRET) {
+    return res.sendStatus(403);
+  }
+
+  const keys = read("activationKeys.json");
+
+  const code = "FX-ACT-" + uuidv4().slice(0, 6).toUpperCase();
 
   const key = {
-    code: generateActivationKey(),
+    code,
     used: false,
     createdAt: new Date().toISOString()
   };
 
   keys.push(key);
-  db.write("activationKeys.json", keys);
+  write("activationKeys.json", keys);
 
   res.json(key);
 });
