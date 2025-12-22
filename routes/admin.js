@@ -3,6 +3,7 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const { write, read } = require("../utils/fileDb");
 const { sendActivationEmail } = require("../services/emailService");
+const db = require("../utils/fileDb");
 
 const router = express.Router();
 
@@ -100,6 +101,7 @@ router.post("/set-strategy", (req, res) => {
 });
 
 module.exports = router;
+
 
 
 
