@@ -1,30 +1,40 @@
 /**
  * priceService.js
- * TwelveData Gold (XAUUSD) price + candles
+ * TwelveData Gold (XAU/USD) price + candles (MTF ready)
  */
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const API_KEY = process.env.TWELVE_DATA_KEY;
+const SYMBOL = "XAU/USD";
 
+/**
+ * Fetch current gold price
+ */
 async function getGoldPrice() {
   const res = await fetch(
-    `https://api.twelvedata.com/price?symbol=XAU/USD&apikey=${API_KEY}`
+    `https://api.twelvedata.com/price?symbol=${SYMBOL}&apikey=${API_KEY}`
   );
 
   const data = await res.json();
 
   if (!data.price) {
+    console.error("Price API response:", data);
     throw new Error("Failed to fetch gold price");
   }
 
   return parseFloat(data.price);
 }
 
-async function getGoldCandles() {
+/**
+ * Generic candle fetcher
+ * @param {string} interval - e.g. "15min", "1h"
+ * @param {number} outputSize
+ */
+async function getGoldCandles(interval = "15min", outputSize = 220) {
   const res = await fetch(
-    `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=15min&outputsize=220&apikey=${API_KEY}`
+    `https://api.twelvedata.com/time_series?symbol=${SYMBOL}&interval=${interval}&outputsize=${outputSize}&apikey=${API_KEY}`
   );
 
   const data = await res.json();
@@ -34,12 +44,26 @@ async function getGoldCandles() {
     throw new Error("Failed to fetch candle data");
   }
 
-  // Oldest → newest
-  return data.values.reverse().map(c => parseFloat(c.close));
+  // Oldest → newest, OHLC format
+  return data.values
+    .reverse()
+    .map(c => ({
+      open: parseFloat(c.open),
+      high: parseFloat(c.high),
+      low: parseFloat(c.low),
+      close: parseFloat(c.close)
+    }));
+}
+
+/**
+ * H1 candles (for Strategy v2)
+ */
+async function getGoldCandlesH1() {
+  return getGoldCandles("1h", 220);
 }
 
 module.exports = {
   getGoldPrice,
-  getGoldCandles
+  getGoldCandles,
+  getGoldCandlesH1
 };
-
