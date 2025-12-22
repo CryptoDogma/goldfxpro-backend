@@ -70,23 +70,37 @@ router.post("/reset-user", (req, res) => {
 });
 //Change stratagy
 router.post("/set-strategy", (req, res) => {
-  const { strategy } = req.body;
+  try {
+    const { strategy } = req.body;
 
-  if (!["v1", "v2"].includes(strategy)) {
-    return res.status(400).json({ error: "Invalid strategy" });
+    if (!["v1", "v2"].includes(strategy)) {
+      return res.status(400).json({ error: "Invalid strategy" });
+    }
+
+    // Read config safely
+    let config = db.read("config.json");
+
+    // Auto-create if missing or invalid
+    if (!config || typeof config !== "object") {
+      config = { activeStrategy: "v1" };
+    }
+
+    config.activeStrategy = strategy;
+    db.write("config.json", config);
+
+    res.json({
+      success: true,
+      activeStrategy: strategy
+    });
+
+  } catch (err) {
+    console.error("Set strategy error:", err);
+    res.status(500).json({ error: "Failed to update strategy" });
   }
-
-  const config = db.read("config.json");
-  config.activeStrategy = strategy;
-  db.write("config.json", config);
-
-  res.json({
-    success: true,
-    activeStrategy: strategy
-  });
 });
 
 module.exports = router;
+
 
 
 
