@@ -29,3 +29,38 @@ async function sendActivationEmail(to, code) {
 module.exports = {
   sendActivationEmail
 };
+async function sendVerificationEmail(to, token) {
+  const link = `${process.env.BASE_URL}/api/verify-email?token=${token}`;
+
+  await transporter.sendMail({
+    from: `"GOLD FX PRO" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Verify your GOLD FX PRO account",
+    html: `
+      <h2>Verify Your Email</h2>
+      <p>Please confirm your email address to activate your account.</p>
+      <a href="${link}">Verify Email</a>
+      <p>This link can only be used once.</p>
+    `
+  });
+}
+
+async function sendLicenseEmail(to, license) {
+  await transporter.sendMail({
+    from: `"GOLD FX PRO" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Your GOLD FX PRO License Key",
+    html: `
+      <h2>Your License Key</h2>
+      <p>Please keep this key safe:</p>
+      <h3>${license}</h3>
+      <p>You will need this to log in.</p>
+    `
+  });
+}
+
+module.exports = {
+  sendActivationEmail,
+  sendVerificationEmail,
+  sendLicenseEmail
+};
