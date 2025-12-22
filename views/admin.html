@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GOLD FX PRO – Admin Panel</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 30px;
+    }
+
+    h2 {
+      color: #d4af37;
+    }
+
+    input, button {
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      margin-right: 6px;
+    }
+
+    input {
+      background: #111827;
+      color: white;
+      border: 1px solid #1f2937;
+      width: 280px;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .key {
+      margin-top: 14px;
+      padding: 10px;
+      background: #111827;
+      border-radius: 6px;
+      font-family: monospace;
+      border-left: 4px solid #22c55e;
+    }
+
+    .error {
+      color: #ef4444;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>GOLD FX PRO — Admin Panel</h2>
+
+<p>Generate activation keys securely.</p>
+
+<input id="secret" type="password" placeholder="Admin Secret" />
+<button onclick="generate()">Generate Activation Key</button>
+
+<div id="result"></div>
+
+<script>
+async function generate() {
+  const secret = document.getElementById("secret").value;
+  const result = document.getElementById("result");
+
+  result.innerHTML = "";
+
+  try {
+    const res = await fetch("/admin/generate-activation", {
+      method: "POST",
+      headers: {
+        "x-admin-secret": secret
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error("Forbidden");
+    }
+
+    const data = await res.json();
+    result.innerHTML = `<div class="key">${data.code}</div>`;
+
+  } catch {
+    result.innerHTML = `<div class="error">Invalid admin secret</div>`;
+  }
+}
+</script>
+
+</body>
+</html>
