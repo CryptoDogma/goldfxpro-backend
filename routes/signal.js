@@ -2,7 +2,7 @@
  * signal.js
  * Phase C: Live price + session + EMA bias
  */
-
+const { buildAnalysis } = require("../services/analysisService");
 const express = require("express");
 const auth = require("../middleware/auth");
 
@@ -63,3 +63,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
