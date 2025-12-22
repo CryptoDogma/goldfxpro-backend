@@ -1,6 +1,6 @@
 /**
  * signal.js
- * GOLD FX PRO – Strategy Engine v1
+ * GOLD FX PRO – Strategy Engine (Versioned)
  */
 
 const express = require("express");
@@ -11,7 +11,8 @@ const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { runStrategy } = require("../services/strategies");
 const db = require("../utils/fileDb");
-const ACTIVE_STRATEGY = "v1"; // change to v2 later
+
+const ACTIVE_STRATEGY = "v1"; // switch to v2 later
 
 const router = express.Router();
 
@@ -20,9 +21,8 @@ router.get("/signal", auth, async (req, res) => {
     // 1️⃣ Live price
     const price = await getGoldPrice();
 
-    // 2️⃣ Candle data (OHLC array expected)
+    // 2️⃣ Candle data
     const candles = await getGoldCandles();
-
     if (!candles || candles.length < 200) {
       return res.status(500).json({ error: "Not enough candle data" });
     }
@@ -32,11 +32,11 @@ router.get("/signal", auth, async (req, res) => {
     const ema50 = calculateEMA(closes.slice(-50), 50);
     const ema200 = calculateEMA(closes.slice(-200), 200);
 
-    // 4️⃣ Session & volatility
+    // 4️⃣ Session info
     const sessionInfo = getSessionInfo();
 
-    // 5️⃣ Build analysis (THE BRAIN)
-    const analysis = buildAnalysis({
+    // 5️⃣ Run ACTIVE strategy
+    const result = await runStrategy(ACTIVE_STRATEGY, {
       price,
       ema50,
       ema200,
@@ -45,19 +45,21 @@ router.get("/signal", auth, async (req, res) => {
       candles
     });
 
-    // 🚫 NO TRADE OR WAIT → return explanation only
-    if (analysis.status !== "TRADE") {
+    // 🚫 NO TRADE / WAIT
+    if (result.status !== "TRADE") {
       return res.json({
-        status: analysis.status,
-        reason: analysis.reason,
+        status: result.status,
+        reason: result.reason,
+        strategy: result.strategy,
         session: sessionInfo.session,
         volatility: sessionInfo.volatility,
         timestamp: new Date().toISOString()
       });
     }
 
-    // 6️⃣ Trade parameters (fixed R:R, safe defaults)
-    const direction = analysis.bias;
+    // 6️⃣ Trade parameters
+    const direction = result.bias;
+
     const stopLoss =
       direction === "BUY" ? price - 10 : price + 10;
     const takeProfit =
@@ -67,21 +69,22 @@ router.get("/signal", auth, async (req, res) => {
     const signal = {
       pair: "XAUUSD",
       timeframe: "M15",
+      strategy: result.strategy,
       direction,
       entry: price.toFixed(2),
       stopLoss: stopLoss.toFixed(2),
       takeProfit: takeProfit.toFixed(2),
       session: sessionInfo.session,
       volatility: sessionInfo.volatility,
-      confidence: Number(analysis.confidence.toFixed(2)),
+      confidence: Number(result.confidence.toFixed(2)),
       analysis: {
         trendStrength: Math.abs(ema50 - ema200).toFixed(2),
         trendAge: "Active",
         volatility: sessionInfo.volatility,
-        qualityGrade: analysis.quality.grade,
-        qualityScore: analysis.quality.score
+        qualityGrade: result.quality.grade,
+        qualityScore: result.quality.score
       },
-      reasoning: `Bias: ${direction}, Pullback confirmed, ${sessionInfo.session} session`,
+      reasoning: `Strategy ${result.strategy}: ${direction} bias with confirmed pullback during ${sessionInfo.session} session`,
       timestamp: new Date().toISOString()
     };
 
@@ -100,5 +103,3 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
-
-
