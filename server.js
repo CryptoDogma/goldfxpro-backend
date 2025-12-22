@@ -10,9 +10,11 @@ app.use(express.json());
 app.use("/api", require("./routes/auth"));
 app.use("/api", require("./routes/licenses"));
 app.use("/admin", require("./routes/admin"));
+app.use("/api", require("./routes/signal"));
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("GOLD FX PRO API running on port", PORT);
 });
+
