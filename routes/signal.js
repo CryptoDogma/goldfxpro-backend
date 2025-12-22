@@ -1,6 +1,6 @@
 /**
  * signal.js
- * Phase C + Analysis: Live price + session + EMA bias + signal analysis
+ * GOLD FX PRO – Strategy Engine v1
  */
 
 const express = require("express");
@@ -19,101 +19,83 @@ router.get("/signal", auth, async (req, res) => {
     // 1️⃣ Live price
     const price = await getGoldPrice();
 
-    // 2️⃣ Candle closes (oldest → newest)
-    const prices = await getGoldCandles();
+    // 2️⃣ Candle data (OHLC array expected)
+    const candles = await getGoldCandles();
 
-    if (!prices || prices.length < 200) {
-      throw new Error("Not enough candle data");
+    if (!candles || candles.length < 200) {
+      return res.status(500).json({ error: "Not enough candle data" });
     }
 
-    // 3️⃣ EMA calculations
-    const ema50 = calculateEMA(prices.slice(-50), 50);
-    const ema200 = calculateEMA(prices.slice(-200), 200);
+    // 3️⃣ EMA calculations (bias only)
+    const closes = candles.map(c => c.close);
+    const ema50 = calculateEMA(closes.slice(-50), 50);
+    const ema200 = calculateEMA(closes.slice(-200), 200);
 
-    const bullish = ema50 > ema200;
+    // 4️⃣ Session & volatility
+    const sessionInfo = getSessionInfo();
 
-    // 4️⃣ Count bars since last EMA cross (trend age)
-    let biasBars = 0;
-    for (let i = prices.length - 1; i >= 200; i--) {
-      const e50 = calculateEMA(prices.slice(i - 50, i), 50);
-      const e200 = calculateEMA(prices.slice(i - 200, i), 200);
-
-      if ((bullish && e50 > e200) || (!bullish && e50 < e200)) {
-        biasBars++;
-      } else {
-        break;
-      }
-    }
-
-    // 5️⃣ Simple volatility proxy (ATR-like %)
-    const recent = prices.slice(-20);
-    const high = Math.max(...recent);
-    const low = Math.min(...recent);
-    const atrPct = (high - low) / price;
-
-    // 6️⃣ Session logic
-    const session = getSessionInfo();
-
-    // 7️⃣ Risk model (fixed R:R)
-    const stopLoss = bullish ? price - 10 : price + 10;
-    const takeProfit = bullish ? price + 20 : price - 20;
-
-    let confidence = bullish ? 0.70 : 0.65;
-    if (session.volatility === "Low") confidence -= 0.15;
-
-    // 8️⃣ Build analysis object
+    // 5️⃣ Build analysis (THE BRAIN)
     const analysis = buildAnalysis({
-      emaFast: ema50,
-      emaSlow: ema200,
       price,
-      biasBars,
-      atrPct
+      ema50,
+      ema200,
+      session: sessionInfo.session,
+      volatility: sessionInfo.volatility,
+      candles
     });
-    // --- Save signal history (keep last 20) ---
-const signals = db.read("signals.json");
 
-signals.unshift({
-  pair: "XAUUSD",
-  timeframe: "M15",
-  direction: bullish ? "BUY" : "SELL",
-  entry: price.toFixed(2),
-  stopLoss: stopLoss.toFixed(2),
-  takeProfit: takeProfit.toFixed(2),
-  session: session.session,
-  confidence: Number(confidence.toFixed(2)),
-  quality: {
-    grade: analysis.qualityGrade,
-    score: analysis.qualityScore
-  },
-  timestamp: new Date().toISOString()
-});
+    // 🚫 NO TRADE OR WAIT → return explanation only
+    if (analysis.status !== "TRADE") {
+      return res.json({
+        status: analysis.status,
+        reason: analysis.reason,
+        session: sessionInfo.session,
+        volatility: sessionInfo.volatility,
+        timestamp: new Date().toISOString()
+      });
+    }
 
-// keep only latest 20
-db.write("signals.json", signals.slice(0, 20));
+    // 6️⃣ Trade parameters (fixed R:R, safe defaults)
+    const direction = analysis.bias;
+    const stopLoss =
+      direction === "BUY" ? price - 10 : price + 10;
+    const takeProfit =
+      direction === "BUY" ? price + 20 : price - 20;
 
-    // 9️⃣ Response
-    res.json({
+    // 7️⃣ Build signal object
+    const signal = {
       pair: "XAUUSD",
       timeframe: "M15",
-      direction: bullish ? "BUY" : "SELL",
+      direction,
       entry: price.toFixed(2),
-      takeProfit: takeProfit.toFixed(2),
       stopLoss: stopLoss.toFixed(2),
-      session: session.session,
-      volatility: session.volatility,
-      confidence: Number(confidence.toFixed(2)),
-      reasoning: bullish
-        ? "EMA 50 above EMA 200 (bullish trend)"
-        : "EMA 50 below EMA 200 (bearish trend)",
-      analysis,
+      takeProfit: takeProfit.toFixed(2),
+      session: sessionInfo.session,
+      volatility: sessionInfo.volatility,
+      confidence: Number(analysis.confidence.toFixed(2)),
+      analysis: {
+        trendStrength: Math.abs(ema50 - ema200).toFixed(2),
+        trendAge: "Active",
+        volatility: sessionInfo.volatility,
+        qualityGrade: analysis.quality.grade,
+        qualityScore: analysis.quality.score
+      },
+      reasoning: `Bias: ${direction}, Pullback confirmed, ${sessionInfo.session} session`,
       timestamp: new Date().toISOString()
-    });
+    };
+
+    // 8️⃣ Save history (ONLY VALID TRADES)
+    const history = db.read("signals.json");
+    history.unshift(signal);
+    db.write("signals.json", history.slice(0, 20));
+
+    // 9️⃣ Respond
+    res.json(signal);
 
   } catch (err) {
-    console.error("Signal error:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Signal error:", err);
+    res.status(500).json({ error: "Signal engine failure" });
   }
 });
 
 module.exports = router;
-
