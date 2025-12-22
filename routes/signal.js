@@ -9,7 +9,7 @@ const auth = require("../middleware/auth");
 const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
-const { buildAnalysis } = require("../services/analysisService");
+const { runStrategy } = require("../services/strategies");
 const db = require("../utils/fileDb");
 
 const router = express.Router();
@@ -99,3 +99,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
