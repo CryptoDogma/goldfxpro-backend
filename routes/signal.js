@@ -1,11 +1,12 @@
 /**
  * signal.js
- * Phase B: Live price + session awareness
+ * Phase C: Live price + session + EMA bias
  */
 
 const express = require("express");
 const auth = require("../middleware/auth");
-const { getGoldPrice } = require("../services/priceService");
+
+const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 
@@ -13,25 +14,31 @@ const router = express.Router();
 
 router.get("/signal", auth, async (req, res) => {
   try {
+    // Fetch live price
     const price = await getGoldPrice();
-    const session = getSessionInfo();
 
-    // Temporary trend bias (Phase C will replace this)
+    // Fetch candle closes
     const prices = await getGoldCandles();
+
+    if (prices.length < 200) {
+      throw new Error("Not enough candle data");
+    }
+
+    // EMA calculations
     const ema50 = calculateEMA(prices.slice(-50), 50);
     const ema200 = calculateEMA(prices.slice(-200), 200);
+
     const bullish = ema50 > ema200;
 
+    // Session logic
+    const session = getSessionInfo();
 
     // Risk model
     const stopLoss = bullish ? price - 10 : price + 10;
     const takeProfit = bullish ? price + 20 : price - 20;
 
-    // Confidence adjustment based on session
     let confidence = bullish ? 0.70 : 0.65;
-    if (session.volatility === "Low") {
-      confidence -= 0.15;
-    }
+    if (session.volatility === "Low") confidence -= 0.15;
 
     res.json({
       pair: "XAUUSD",
@@ -51,10 +58,8 @@ router.get("/signal", auth, async (req, res) => {
 
   } catch (err) {
     console.error("Signal error:", err.message);
-    res.status(500).json({ error: "Signal generation failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
 module.exports = router;
-
-
