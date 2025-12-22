@@ -7,6 +7,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const { getGoldPrice } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
+const { calculateEMA } = require("../services/emaService");
 
 const router = express.Router();
 
@@ -16,7 +17,11 @@ router.get("/signal", auth, async (req, res) => {
     const session = getSessionInfo();
 
     // Temporary trend bias (Phase C will replace this)
-    const bullish = Math.random() > 0.5;
+    const prices = await getGoldCandles();
+    const ema50 = calculateEMA(prices.slice(-50), 50);
+    const ema200 = calculateEMA(prices.slice(-200), 200);
+    const bullish = ema50 > ema200;
+
 
     // Risk model
     const stopLoss = bullish ? price - 10 : price + 10;
@@ -39,9 +44,9 @@ router.get("/signal", auth, async (req, res) => {
       volatility: session.volatility,
       confidence: Number(confidence.toFixed(2)),
       reasoning:
-        session.volatility === "High"
-          ? "High-liquidity session with trend bias"
-          : "Low-liquidity session, reduced confidence",
+        reasoning: bullish
+        ? "EMA 50 above EMA 200 (bullish trend)"
+        : "EMA 50 below EMA 200 (bearish trend)",
       timestamp: new Date().toISOString()
     });
 
@@ -52,3 +57,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
