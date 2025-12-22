@@ -1,49 +1,55 @@
-function trendStrength(emaFast, emaSlow, price) {
-  const dist = Math.abs(emaFast - emaSlow);
-  const pct = dist / price; // normalized
-  if (pct > 0.006) return { label: "Strong", score: 1.0 };
-  if (pct > 0.003) return { label: "Moderate", score: 0.7 };
-  return { label: "Weak", score: 0.4 };
-}
+const { evaluateRegime } = require("./regimeService");
+const { determineBias } = require("./biasService");
+const { evaluateLocation } = require("./locationService");
+const { confirmTiming } = require("./timingService");
+const { calculateQuality } = require("./qualityService");
 
-function trendAge(biasBars) {
-  if (biasBars >= 30) return { label: "Mature", score: 1.0 };
-  if (biasBars >= 10) return { label: "Developing", score: 0.7 };
-  return { label: "Early", score: 0.4 };
-}
+function buildAnalysis({
+  price,
+  ema50,
+  ema200,
+  session,
+  volatility,
+  candles
+}) {
+  const regime = evaluateRegime({ session, volatility, ema50, ema200 });
+  if (!regime.allowed) {
+    return {
+      status: "NO_TRADE",
+      reason: regime.reason
+    };
+  }
 
-function volatilityState(atrPct) {
-  if (atrPct > 0.008) return { label: "Aggressive", score: 0.6 };
-  if (atrPct > 0.004) return { label: "Normal", score: 1.0 };
-  return { label: "Quiet", score: 0.8 };
-}
+  const bias = determineBias(ema50, ema200);
+  if (bias === "NEUTRAL") {
+    return { status: "NO_TRADE", reason: "Neutral bias" };
+  }
 
-function gradeFromScore(score) {
-  if (score >= 0.85) return "A";
-  if (score >= 0.7) return "B";
-  if (score >= 0.55) return "C";
-  return "D";
-}
+  const location = evaluateLocation(price, ema50, bias);
+  if (!location.valid) {
+    return { status: "NO_TRADE", reason: location.reason };
+  }
 
-function buildAnalysis({ emaFast, emaSlow, price, biasBars, atrPct }) {
-  const tStrength = trendStrength(emaFast, emaSlow, price);
-  const tAge = trendAge(biasBars);
-  const vol = volatilityState(atrPct);
+  const timing = confirmTiming(candles, bias);
+  if (!timing) {
+    return { status: "WAIT", reason: "No entry confirmation" };
+  }
 
-  const score =
-    (tStrength.score * 0.4) +
-    (tAge.score * 0.35) +
-    (vol.score * 0.25);
+  const quality = calculateQuality({
+    volatility,
+    session,
+    locationScore: location.score
+  });
+
+  if (quality.grade === "C") {
+    return { status: "NO_TRADE", reason: "Low quality setup" };
+  }
 
   return {
-    trendStrength: tStrength.label,
-    trendAge: tAge.label,
-    volatility: vol.label,
-    qualityScore: Number(score.toFixed(2)),
-    qualityGrade: gradeFromScore(score),
-    explanation:
-      `Trend is ${tStrength.label.toLowerCase()} and ${tAge.label.toLowerCase()}, ` +
-      `volatility is ${vol.label.toLowerCase()}.`
+    status: "TRADE",
+    bias,
+    quality,
+    confidence: quality.score
   };
 }
 
