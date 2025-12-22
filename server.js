@@ -13,12 +13,14 @@ app.use("/admin", require("./routes/admin"));
 app.use("/api", require("./routes/signal"));
 app.use("/api", require("./routes/history"));
 app.use("/api", require("./routes/license"));
+app.use("/admin", require("./routes/adminLicenses"));
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("GOLD FX PRO API running on port", PORT);
 });
+
 
 
 
