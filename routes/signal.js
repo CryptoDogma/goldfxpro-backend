@@ -1,42 +1,49 @@
 /**
  * signal.js
- * GOLD FX PRO – Strategy Engine (Versioned)
+ * GOLD FX PRO – Strategy Engine (Versioned, Admin-Controlled)
  */
 
 const express = require("express");
 const auth = require("../middleware/auth");
+const db = require("../utils/fileDb");
 
 const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { runStrategy } = require("../services/strategies");
-const db = require("../utils/fileDb");
-const config = db.read("config.json");
-const ACTIVE_STRATEGY = config.activeStrategy || "v1";
 
 const router = express.Router();
 
+// 🔑 SINGLE SOURCE OF TRUTH
+function getActiveStrategy() {
+  const config = db.read("config.json");
+  return config?.activeStrategy || "v1";
+}
+
 router.get("/signal", auth, async (req, res) => {
   try {
-    // 1️⃣ Live price
+    // 1️⃣ Active strategy (READ EVERY REQUEST)
+    const activeStrategy = getActiveStrategy();
+
+    // 2️⃣ Live price
     const price = await getGoldPrice();
 
-    // 2️⃣ Candle data
+    // 3️⃣ Candle data (OHLC expected)
     const candles = await getGoldCandles();
     if (!candles || candles.length < 200) {
       return res.status(500).json({ error: "Not enough candle data" });
     }
 
-    // 3️⃣ EMA calculations (bias only)
+    // 4️⃣ EMA bias
     const closes = candles.map(c => c.close);
     const ema50 = calculateEMA(closes.slice(-50), 50);
     const ema200 = calculateEMA(closes.slice(-200), 200);
 
-    // 4️⃣ Session info
+    // 5️⃣ Session info
     const sessionInfo = getSessionInfo();
 
-    // 5️⃣ Run ACTIVE strategy
-    const result = await runStrategy(ACTIVE_STRATEGY, {
+    // 6️⃣ Run strategy
+    const result = await runStrategy(activeStrategy, {
       price,
       ema50,
       ema200,
@@ -45,31 +52,28 @@ router.get("/signal", auth, async (req, res) => {
       candles
     });
 
-    // 🚫 NO TRADE / WAIT
+    // 🚫 WAIT / NO TRADE
     if (result.status !== "TRADE") {
       return res.json({
         status: result.status,
         reason: result.reason,
-        strategy: result.strategy,
+        strategy: activeStrategy,
         session: sessionInfo.session,
         volatility: sessionInfo.volatility,
         timestamp: new Date().toISOString()
       });
     }
 
-    // 6️⃣ Trade parameters
+    // 7️⃣ Trade parameters
     const direction = result.bias;
+    const stopLoss = direction === "BUY" ? price - 10 : price + 10;
+    const takeProfit = direction === "BUY" ? price + 20 : price - 20;
 
-    const stopLoss =
-      direction === "BUY" ? price - 10 : price + 10;
-    const takeProfit =
-      direction === "BUY" ? price + 20 : price - 20;
-
-    // 7️⃣ Build signal object
+    // 8️⃣ Signal object
     const signal = {
       pair: "XAUUSD",
       timeframe: "M15",
-      strategy: result.strategy,
+      strategy: activeStrategy,
       direction,
       entry: price.toFixed(2),
       stopLoss: stopLoss.toFixed(2),
@@ -84,16 +88,16 @@ router.get("/signal", auth, async (req, res) => {
         qualityGrade: result.quality.grade,
         qualityScore: result.quality.score
       },
-      reasoning: `Strategy ${result.strategy}: ${direction} bias with confirmed pullback during ${sessionInfo.session} session`,
+      reasoning: `Strategy ${activeStrategy.toUpperCase()}: ${direction} bias with confirmed pullback during ${sessionInfo.session} session`,
       timestamp: new Date().toISOString()
     };
 
-    // 8️⃣ Save history (ONLY VALID TRADES)
-    const history = db.read("signals.json");
+    // 9️⃣ Save history (latest 20 only)
+    const history = db.read("signals.json") || [];
     history.unshift(signal);
     db.write("signals.json", history.slice(0, 20));
 
-    // 9️⃣ Respond
+    // 🔟 Respond
     res.json(signal);
 
   } catch (err) {
@@ -103,5 +107,3 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
-
-
