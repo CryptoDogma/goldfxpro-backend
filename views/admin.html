@@ -60,14 +60,16 @@
 
 <p>Generate activation keys securely.</p>
 
+<input id="email" placeholder="Client Email" />
 <input id="secret" type="password" placeholder="Admin Secret" />
-<button onclick="generate()">Generate Activation Key</button>
+<button onclick="generate()">Generate & Send Key</button>
 
 <div id="result"></div>
 
 <script>
 async function generate() {
   const secret = document.getElementById("secret").value;
+  const email = document.getElementById("email").value;
   const result = document.getElementById("result");
 
   result.innerHTML = "";
@@ -76,22 +78,24 @@ async function generate() {
     const res = await fetch("/admin/generate-activation", {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "x-admin-secret": secret
-      }
+      },
+      body: JSON.stringify({ email })
     });
 
-    if (!res.ok) {
-      throw new Error("Forbidden");
-    }
+    if (!res.ok) throw new Error("Error");
 
-    const data = await res.json();
-    result.innerHTML = `<div class="key">${data.code}</div>`;
+    result.innerHTML =
+      `<div class="key">Activation key sent to ${email}</div>`;
 
   } catch {
-    result.innerHTML = `<div class="error">Invalid admin secret</div>`;
+    result.innerHTML =
+      `<div class="error">Failed to generate or send key</div>`;
   }
 }
 </script>
 
 </body>
 </html>
+
