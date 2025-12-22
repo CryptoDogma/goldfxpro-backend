@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const { write, read } = require("../utils/fileDb");
+const { sendActivationEmail } = require("../services/emailService");
 
 const router = express.Router();
 
@@ -13,11 +14,16 @@ router.get("/", (req, res) => {
 });
 
 // Generate activation key (protected)
-router.post("/generate-activation", (req, res) => {
+router.post("/generate-activation", async (req, res) => {
   const adminSecret = req.headers["x-admin-secret"];
+  const { email } = req.body;
 
   if (adminSecret !== process.env.ADMIN_SECRET) {
     return res.sendStatus(403);
+  }
+
+  if (!email) {
+    return res.status(400).json({ error: "Email required" });
   }
 
   const keys = read("activationKeys.json");
@@ -27,13 +33,20 @@ router.post("/generate-activation", (req, res) => {
   const key = {
     code,
     used: false,
+    email,
     createdAt: new Date().toISOString()
   };
 
   keys.push(key);
   write("activationKeys.json", keys);
 
-  res.json(key);
+  await sendActivationEmail(email, code);
+
+  res.json({
+    success: true,
+    message: "Activation key generated and emailed"
+  });
 });
 
 module.exports = router;
+
