@@ -1,45 +1,75 @@
 /**
  * signal.js
- * Phase C: Live price + session + EMA bias
+ * Phase C + Analysis: Live price + session + EMA bias + signal analysis
  */
-const { buildAnalysis } = require("../services/analysisService");
+
 const express = require("express");
 const auth = require("../middleware/auth");
 
 const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
+const { buildAnalysis } = require("../services/analysisService");
 
 const router = express.Router();
 
 router.get("/signal", auth, async (req, res) => {
   try {
-    // Fetch live price
+    // 1️⃣ Live price
     const price = await getGoldPrice();
 
-    // Fetch candle closes
+    // 2️⃣ Candle closes (oldest → newest)
     const prices = await getGoldCandles();
 
-    if (prices.length < 200) {
+    if (!prices || prices.length < 200) {
       throw new Error("Not enough candle data");
     }
 
-    // EMA calculations
+    // 3️⃣ EMA calculations
     const ema50 = calculateEMA(prices.slice(-50), 50);
     const ema200 = calculateEMA(prices.slice(-200), 200);
 
     const bullish = ema50 > ema200;
 
-    // Session logic
+    // 4️⃣ Count bars since last EMA cross (trend age)
+    let biasBars = 0;
+    for (let i = prices.length - 1; i >= 200; i--) {
+      const e50 = calculateEMA(prices.slice(i - 50, i), 50);
+      const e200 = calculateEMA(prices.slice(i - 200, i), 200);
+
+      if ((bullish && e50 > e200) || (!bullish && e50 < e200)) {
+        biasBars++;
+      } else {
+        break;
+      }
+    }
+
+    // 5️⃣ Simple volatility proxy (ATR-like %)
+    const recent = prices.slice(-20);
+    const high = Math.max(...recent);
+    const low = Math.min(...recent);
+    const atrPct = (high - low) / price;
+
+    // 6️⃣ Session logic
     const session = getSessionInfo();
 
-    // Risk model
+    // 7️⃣ Risk model (fixed R:R)
     const stopLoss = bullish ? price - 10 : price + 10;
     const takeProfit = bullish ? price + 20 : price - 20;
 
     let confidence = bullish ? 0.70 : 0.65;
     if (session.volatility === "Low") confidence -= 0.15;
 
+    // 8️⃣ Build analysis object
+    const analysis = buildAnalysis({
+      emaFast: ema50,
+      emaSlow: ema200,
+      price,
+      biasBars,
+      atrPct
+    });
+
+    // 9️⃣ Response
     res.json({
       pair: "XAUUSD",
       timeframe: "M15",
@@ -53,6 +83,7 @@ router.get("/signal", auth, async (req, res) => {
       reasoning: bullish
         ? "EMA 50 above EMA 200 (bullish trend)"
         : "EMA 50 below EMA 200 (bearish trend)",
+      analysis,
       timestamp: new Date().toISOString()
     });
 
@@ -63,4 +94,3 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
-
