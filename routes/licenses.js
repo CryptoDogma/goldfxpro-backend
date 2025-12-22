@@ -5,37 +5,81 @@ const { generateLicenseKey } = require("../utils/keygen");
 
 const router = express.Router();
 
+/**
+ * REGISTER USER + ACTIVATE LICENSE
+ * Called after email verification OR direct activation (your choice)
+ */
 router.post("/register", async (req, res) => {
-  const { name, email, password, activationCode } = req.body;
+  try {
+    const { name, email, password, activationCode } = req.body;
 
-  const activationKeys = db.read("activationKeys.json");
-  const code = activationKeys.find(k => k.code === activationCode && !k.used);
+    if (!name || !email || !password || !activationCode) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-  if (!code) {
-    return res.status(400).json({ error: "Invalid activation code" });
+    // 1️⃣ Validate activation code
+    const activationKeys = db.read("activationKeys.json");
+    const code = activationKeys.find(
+      k => k.code === activationCode && !k.used
+    );
+
+    if (!code) {
+      return res.status(400).json({ error: "Invalid activation code" });
+    }
+
+    // 2️⃣ Ensure user does not exist
+    const users = db.read("users.json");
+    if (users.find(u => u.email === email)) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    // 3️⃣ Mark activation code as used
+    code.used = true;
+    code.usedAt = new Date().toISOString();
+    db.write("activationKeys.json", activationKeys);
+
+    // 4️⃣ Create user
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    users.push({
+      name,
+      email,
+      password: passwordHash,
+      verified: true,
+      createdAt: new Date().toISOString()
+    });
+
+    db.write("users.json", users);
+
+    // 5️⃣ Create license (30 days)
+    const licenses = db.read("licenses.json");
+    const licenseKey = generateLicenseKey();
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    licenses.push({
+      email,
+      licenseKey,
+      active: true,
+      expiresAt: expiresAt.toISOString(),
+      createdAt: new Date().toISOString()
+    });
+
+    db.write("licenses.json", licenses);
+
+    // 6️⃣ Success
+    res.json({
+      success: true,
+      message: "Registration successful",
+      licenseKey,
+      expiresAt: expiresAt.toISOString()
+    });
+
+  } catch (err) {
+    console.error("License register error:", err);
+    res.status(500).json({ error: "Registration failed" });
   }
-
-  code.used = true;
-  db.write("activationKeys.json", activationKeys);
-
-  const users = db.read("users.json");
-
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ error: "User already exists" });
-  }
-
-  const license = generateLicenseKey();
-
-  users.push({
-    name,
-    email,
-    password: await bcrypt.hash(password, 10),
-    license
-  });
-
-  db.write("users.json", users);
-
-  res.json({ license });
 });
 
 module.exports = router;
