@@ -43,8 +43,7 @@ router.get("/signal", auth, async (req, res) => {
       session: session.session,
       volatility: session.volatility,
       confidence: Number(confidence.toFixed(2)),
-      reasoning:
-        reasoning: bullish
+      reasoning: bullish
         ? "EMA 50 above EMA 200 (bullish trend)"
         : "EMA 50 below EMA 200 (bearish trend)",
       timestamp: new Date().toISOString()
@@ -57,4 +56,5 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
 
