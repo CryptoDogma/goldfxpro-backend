@@ -24,7 +24,7 @@ async function getGoldPrice() {
 
 async function getGoldCandles() {
   const res = await fetch(
-    `https://api.twelvedata.com/time_series?symbol=XAUUSD&interval=15min&outputsize=220&apikey=${API_KEY}`
+    `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=15min&outputsize=220&apikey=${API_KEY}`
   );
 
   const data = await res.json();
@@ -42,3 +42,4 @@ module.exports = {
   getGoldPrice,
   getGoldCandles
 };
+
