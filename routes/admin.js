@@ -48,5 +48,28 @@ router.post("/generate-activation", async (req, res) => {
   });
 });
 
+//clear user account email address
+router.post("/reset-user", (req, res) => {
+  const adminSecret = req.headers["x-admin-secret"];
+  const { email } = req.body;
+
+  if (adminSecret !== process.env.ADMIN_SECRET) {
+    return res.sendStatus(403);
+  }
+
+  const users = read("users.json");
+  const licenses = read("licenses.json");
+
+  const newUsers = users.filter(u => u.email !== email);
+  const newLicenses = licenses.filter(l => l.email !== email);
+
+  write("users.json", newUsers);
+  write("licenses.json", newLicenses);
+
+  res.json({ success: true, message: "User removed" });
+});
+
+
 module.exports = router;
+
 
