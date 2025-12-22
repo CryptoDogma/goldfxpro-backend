@@ -10,6 +10,7 @@ const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { buildAnalysis } = require("../services/analysisService");
+const db = require("../utils/fileDb");
 
 const router = express.Router();
 
@@ -68,6 +69,27 @@ router.get("/signal", auth, async (req, res) => {
       biasBars,
       atrPct
     });
+    // --- Save signal history (keep last 20) ---
+const signals = db.read("signals.json");
+
+signals.unshift({
+  pair: "XAUUSD",
+  timeframe: "M15",
+  direction: bullish ? "BUY" : "SELL",
+  entry: price.toFixed(2),
+  stopLoss: stopLoss.toFixed(2),
+  takeProfit: takeProfit.toFixed(2),
+  session: session.session,
+  confidence: Number(confidence.toFixed(2)),
+  quality: {
+    grade: analysis.qualityGrade,
+    score: analysis.qualityScore
+  },
+  timestamp: new Date().toISOString()
+});
+
+// keep only latest 20
+db.write("signals.json", signals.slice(0, 20));
 
     // 9️⃣ Response
     res.json({
@@ -94,3 +116,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
