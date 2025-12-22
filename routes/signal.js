@@ -11,8 +11,8 @@ const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { runStrategy } = require("../services/strategies");
 const db = require("../utils/fileDb");
-
-const ACTIVE_STRATEGY = "v2"; // switch to v2 later
+const config = db.read("config.json");
+const ACTIVE_STRATEGY = config.activeStrategy || "v1";
 
 const router = express.Router();
 
@@ -103,4 +103,5 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
 
