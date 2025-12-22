@@ -18,3 +18,4 @@ app.listen(PORT, () => {
   console.log("GOLD FX PRO API running on port", PORT);
 });
 
+
