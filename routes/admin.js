@@ -4,6 +4,10 @@ const { v4: uuidv4 } = require("uuid");
 const { write, read } = require("../utils/fileDb");
 const { sendActivationEmail } = require("../services/emailService");
 const db = require("../utils/fileDb");
+const {
+  setActiveStrategy
+} = require("../services/strategyConfig");
+
 
 const router = express.Router();
 
@@ -73,39 +77,27 @@ router.post("/reset-user", (req, res) => {
 router.post("/set-strategy", (req, res) => {
   try {
     const { strategy } = req.body;
-
     const allowed = ["v1", "v2", "v3"];
 
     if (!allowed.includes(strategy)) {
-      return res.status(400).json({
-        error: "Invalid strategy",
-        allowed
-      });
+      return res.status(400).json({ error: "Invalid strategy" });
     }
 
-    let config = db.read("config.json");
-
-    if (!config || typeof config !== "object") {
-      config = {};
-    }
-
-    config.activeStrategy = strategy;
-    config.updatedAt = new Date().toISOString();
-
-    db.write("config.json", config);
+    const active = setActiveStrategy(strategy);
 
     res.json({
       success: true,
-      activeStrategy: strategy
+      activeStrategy: active
     });
 
   } catch (err) {
     console.error("Set strategy error:", err);
-    res.status(500).json({ error: "Failed to update strategy" });
+    res.status(500).json({ error: "Failed to set strategy" });
   }
 });
 
 module.exports = router;
+
 
 
 
