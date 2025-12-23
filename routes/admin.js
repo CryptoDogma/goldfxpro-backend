@@ -74,21 +74,22 @@ router.post("/reset-user", (req, res) => {
   res.json({ success: true, message: "User removed" });
 });
 //Change stratagy
+const { setStrategy } = require("../services/strategyState");
+
 router.post("/set-strategy", (req, res) => {
-  try {
-    const { strategy } = req.body;
-    const allowed = ["v1", "v2", "v3"];
+  const { strategy } = req.body;
+  const allowed = ["v1", "v2", "v3"];
 
-    if (!allowed.includes(strategy)) {
-      return res.status(400).json({ error: "Invalid strategy" });
-    }
+  if (!allowed.includes(strategy)) {
+    return res.status(400).json({ error: "Invalid strategy" });
+  }
 
-    const active = setActiveStrategy(strategy);
+  const active = setStrategy(strategy);
 
-    res.json({
-      success: true,
-      activeStrategy: active
-    });
+  res.json({
+    success: true,
+    activeStrategy: active
+  });
 
   } catch (err) {
     console.error("Set strategy error:", err);
@@ -97,6 +98,7 @@ router.post("/set-strategy", (req, res) => {
 });
 
 module.exports = router;
+
 
 
 
