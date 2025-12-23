@@ -14,7 +14,7 @@ const { runStrategy } = require("../services/strategies");
 
 const router = express.Router();
 
-// 🔑 SINGLE SOURCE OF TRUTH
+// 🔑 SINGLE SOURCE OF TRUTH (ADMIN CONTROLLED)
 function getActiveStrategy() {
   const config = db.read("config.json");
   return config?.activeStrategy || "v1";
@@ -34,17 +34,20 @@ router.get("/signal", auth, async (req, res) => {
       return res.status(500).json({ error: "Not enough candle data" });
     }
 
-    // 4️⃣ EMA bias
+    // 4️⃣ EMA calculations
     const closes = candles.map(c => c.close);
-    const ema50 = calculateEMA(closes.slice(-50), 50);
+
+    const ema10  = calculateEMA(closes.slice(-10), 10);
+    const ema50  = calculateEMA(closes.slice(-50), 50);
     const ema200 = calculateEMA(closes.slice(-200), 200);
 
     // 5️⃣ Session info
     const sessionInfo = getSessionInfo();
 
-    // 6️⃣ Run strategy
+    // 6️⃣ Run ACTIVE strategy
     const result = await runStrategy(activeStrategy, {
       price,
+      ema10,
       ema50,
       ema200,
       session: sessionInfo.session,
@@ -64,12 +67,12 @@ router.get("/signal", auth, async (req, res) => {
       });
     }
 
-    // 7️⃣ Trade parameters
+    // 7️⃣ Trade parameters (fixed RR for now)
     const direction = result.bias;
     const stopLoss = direction === "BUY" ? price - 10 : price + 10;
     const takeProfit = direction === "BUY" ? price + 20 : price - 20;
 
-    // 8️⃣ Signal object
+    // 8️⃣ Build signal object
     const signal = {
       pair: "XAUUSD",
       timeframe: "M15",
@@ -88,7 +91,7 @@ router.get("/signal", auth, async (req, res) => {
         qualityGrade: result.quality.grade,
         qualityScore: result.quality.score
       },
-      reasoning: `Strategy ${activeStrategy.toUpperCase()}: ${direction} bias with confirmed pullback during ${sessionInfo.session} session`,
+      reasoning: `Strategy ${activeStrategy.toUpperCase()}: ${result.reason}`,
       timestamp: new Date().toISOString()
     };
 
