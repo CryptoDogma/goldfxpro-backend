@@ -11,14 +11,16 @@ const { getGoldPrice, getGoldCandles } = require("../services/priceService");
 const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { runStrategy } = require("../services/strategies");
+const { getActiveStrategy } = require("../services/strategyConfig");
+
 
 const router = express.Router();
 
 // 🔑 SINGLE SOURCE OF TRUTH (ADMIN CONTROLLED)
-function getActiveStrategy() {
-  const config = db.read("config.json");
-  return config?.activeStrategy || "v1";
-}
+//function getActiveStrategy() {
+ // const config = db.read("config.json");
+ // return config?.activeStrategy || "v1";
+//}
 
 router.get("/signal", auth, async (req, res) => {
   try {
@@ -110,3 +112,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
