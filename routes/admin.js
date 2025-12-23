@@ -74,19 +74,24 @@ router.post("/set-strategy", (req, res) => {
   try {
     const { strategy } = req.body;
 
-    if (!["v1", "v2", "V3"].includes(strategy)) {
-      return res.status(400).json({ error: "Invalid strategy" });
+    const allowed = ["v1", "v2", "v3"];
+
+    if (!allowed.includes(strategy)) {
+      return res.status(400).json({
+        error: "Invalid strategy",
+        allowed
+      });
     }
 
-    // Read config safely
     let config = db.read("config.json");
 
-    // Auto-create if missing or invalid
     if (!config || typeof config !== "object") {
-      config = { activeStrategy: "v3" };
+      config = {};
     }
 
     config.activeStrategy = strategy;
+    config.updatedAt = new Date().toISOString();
+
     db.write("config.json", config);
 
     res.json({
@@ -101,6 +106,7 @@ router.post("/set-strategy", (req, res) => {
 });
 
 module.exports = router;
+
 
 
 
