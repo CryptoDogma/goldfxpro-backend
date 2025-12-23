@@ -74,7 +74,7 @@ router.post("/set-strategy", (req, res) => {
   try {
     const { strategy } = req.body;
 
-    if (!["v1", "v2"].includes(strategy)) {
+    if (!["v1", "v2", "V3"].includes(strategy)) {
       return res.status(400).json({ error: "Invalid strategy" });
     }
 
@@ -83,7 +83,7 @@ router.post("/set-strategy", (req, res) => {
 
     // Auto-create if missing or invalid
     if (!config || typeof config !== "object") {
-      config = { activeStrategy: "v1" };
+      config = { activeStrategy: "v3" };
     }
 
     config.activeStrategy = strategy;
@@ -101,6 +101,7 @@ router.post("/set-strategy", (req, res) => {
 });
 
 module.exports = router;
+
 
 
 
