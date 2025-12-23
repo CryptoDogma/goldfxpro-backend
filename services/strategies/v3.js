@@ -14,7 +14,7 @@ const {
   priceInAnyFVG
 } = require("../structure/fvg");
 
-module.exports = function runV3(context) {
+function runV3(context) {
   const {
     price,
     candles,
@@ -32,7 +32,7 @@ module.exports = function runV3(context) {
   // ─────────────────────────────────────────────
   // 1️⃣ DeMarker (14) + exit-from-extreme
   const demarkers = calculateDeMarker(candles, 14);
-  if (demarkers.length < 2) {
+  if (!demarkers || demarkers.length < 2) {
     return {
       status: "WAIT",
       reason: "Insufficient DeMarker data"
@@ -116,4 +116,6 @@ module.exports = function runV3(context) {
     status: "WAIT",
     reason: "Conditions not aligned for Strategy v3"
   };
-};
+}
+
+module.exports = { runV3 };
