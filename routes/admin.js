@@ -92,7 +92,7 @@ router.post("/set-strategy", (req, res) => {
 //test whatsapp
 const { sendWhatsApp } = require("../services/whatsappService");
 
-router.post("/test-whatsapp", x-admin-secret, async (req, res) => {
+router.post("/test-whatsapp", auth, async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -110,6 +110,7 @@ router.post("/test-whatsapp", x-admin-secret, async (req, res) => {
 
 
 module.exports = router;
+
 
 
 
