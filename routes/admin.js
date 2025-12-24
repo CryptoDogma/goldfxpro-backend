@@ -90,24 +90,53 @@ router.post("/set-strategy", (req, res) => {
     activeStrategy: active
   });
 });
-//test whatsapp
-router.post("/test-whatsapp", adminAuth, async (req, res) => {
+/**
+ * Update user WhatsApp settings
+ * Admin-only
+ */
+router.post("/update-user", adminAuth, async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { email, phone, whatsappOptIn } = req.body;
 
-    await sendWhatsApp(
-      phone,
-      "✅ GOLD FX PRO WhatsApp integration is LIVE!"
-    );
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
 
-    res.json({ success: true });
+    const users = db.read("users.json");
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update fields safely
+    if (phone) {
+      user.phone = phone;
+    }
+
+    if (typeof whatsappOptIn === "boolean") {
+      user.whatsappOptIn = whatsappOptIn;
+    }
+
+    db.write("users.json", users);
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      user: {
+        email: user.email,
+        phone: user.phone,
+        whatsappOptIn: user.whatsappOptIn
+      }
+    });
   } catch (err) {
-    console.error("WhatsApp test failed:", err);
-    res.status(500).json({ error: "WhatsApp test failed" });
+    console.error("Admin update-user error:", err);
+    res.status(500).json({ error: "Failed to update user" });
   }
 });
 
 module.exports = router;
+
 
 
 
