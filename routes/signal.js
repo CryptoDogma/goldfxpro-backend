@@ -15,24 +15,17 @@ const { getActiveStrategy } = require("../services/strategyConfig");
 const { sendWhatsApp } = require("../services/whatsappService");
 const { buildTradeMessage } = require("../services/whatsappFormatter");
 
-
 const router = express.Router();
-
-// 🔑 SINGLE SOURCE OF TRUTH (ADMIN CONTROLLED)
-//function getActiveStrategy() {
- // const config = db.read("config.json");
- // return config?.activeStrategy || "v1";
-//}
 
 router.get("/signal", auth, async (req, res) => {
   try {
-    // 1️⃣ Active strategy (READ EVERY REQUEST)
+    // 1️⃣ Active strategy
     const activeStrategy = getActiveStrategy();
 
     // 2️⃣ Live price
     const price = await getGoldPrice();
 
-    // 3️⃣ Candle data (OHLC expected)
+    // 3️⃣ Candle data
     const candles = await getGoldCandles();
     if (!candles || candles.length < 200) {
       return res.status(500).json({ error: "Not enough candle data" });
@@ -40,7 +33,6 @@ router.get("/signal", auth, async (req, res) => {
 
     // 4️⃣ EMA calculations
     const closes = candles.map(c => c.close);
-
     const ema10  = calculateEMA(closes.slice(-10), 10);
     const ema50  = calculateEMA(closes.slice(-50), 50);
     const ema200 = calculateEMA(closes.slice(-200), 200);
@@ -48,7 +40,7 @@ router.get("/signal", auth, async (req, res) => {
     // 5️⃣ Session info
     const sessionInfo = getSessionInfo();
 
-    // 6️⃣ Run ACTIVE strategy
+    // 6️⃣ Run strategy
     const result = await runStrategy(activeStrategy, {
       price,
       ema10,
@@ -59,7 +51,7 @@ router.get("/signal", auth, async (req, res) => {
       candles
     });
 
-    // 🚫 WAIT / NO TRADE
+    // 🚫 NO TRADE
     if (result.status !== "TRADE") {
       return res.json({
         status: result.status,
@@ -71,12 +63,12 @@ router.get("/signal", auth, async (req, res) => {
       });
     }
 
-    // 7️⃣ Trade parameters (fixed RR for now)
+    // 7️⃣ Trade parameters
     const direction = result.bias;
     const stopLoss = direction === "BUY" ? price - 10 : price + 10;
     const takeProfit = direction === "BUY" ? price + 20 : price - 20;
 
-    // 8️⃣ Build signal object
+    // 8️⃣ Build signal
     const signal = {
       pair: "XAUUSD",
       timeframe: "M15",
@@ -99,29 +91,12 @@ router.get("/signal", auth, async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    // 9️⃣ Save history (latest 20 only)
+    // 9️⃣ Save history
     const history = db.read("signals.json") || [];
     history.unshift(signal);
     db.write("signals.json", history.slice(0, 20));
 
-    // 🔟 Respond
-    res.json(signal);
-
-  } catch (err) {
-    console.error("Signal error:", err);
-    res.status(500).json({ error: "Signal engine failure" });
-  }
-});
-// WHATSAPP
-router.get("/signal", auth, async (req, res) => {
-  try {
-    // build signal
-    const signal = { ... };
-
-    // save history
-    ...
-
-    // 🔔 AUTO-SEND WHATSAPP — MUST BE HERE
+    // 🔔 10️⃣ AUTO-SEND WHATSAPP (SAFE + CONTROLLED)
     try {
       const ALLOWED_STRATEGIES = ["v3", "v4"];
       const MIN_CONFIDENCE = 0.75;
@@ -145,7 +120,7 @@ router.get("/signal", auth, async (req, res) => {
       console.error("WhatsApp auto-send failed:", err.message);
     }
 
-    // respond
+    // 🔟 Respond
     res.json(signal);
 
   } catch (err) {
@@ -155,6 +130,3 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
-
-
-
