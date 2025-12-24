@@ -16,14 +16,9 @@ const FROM = process.env.TWILIO_WHATSAPP_FROM;
  * Send WhatsApp message
  */
 async function sendWhatsApp(to, message) {
-  if (!FROM) {
-    console.warn("WhatsApp FROM number not configured");
-    return;
-  }
-
   return client.messages.create({
-    from: FROM,
-    to: `whatsapp:${to}`,
+    from: process.env.TWILIO_WHATSAPP_FROM, // whatsapp:+14155238886
+    to: `whatsapp:${to}`,                   // whatsapp:+2781...
     body: message
   });
 }
