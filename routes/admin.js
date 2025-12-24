@@ -7,7 +7,6 @@ const db = require("../utils/fileDb");
 const {
   setActiveStrategy
 } = require("../services/strategyConfig");
-const adminAuth = require("../middleware/admin");
 
 
 const router = express.Router();
@@ -93,7 +92,7 @@ router.post("/set-strategy", (req, res) => {
 //test whatsapp
 const { sendWhatsApp } = require("../services/whatsappService");
 
-router.post("/test-whatsapp", admin, async (req, res) => {
+router.post("/test-whatsapp", x-admin-secret, async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -111,6 +110,7 @@ router.post("/test-whatsapp", admin, async (req, res) => {
 
 
 module.exports = router;
+
 
 
 
