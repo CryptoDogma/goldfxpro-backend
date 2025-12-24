@@ -112,30 +112,49 @@ router.get("/signal", auth, async (req, res) => {
     res.status(500).json({ error: "Signal engine failure" });
   }
 });
-// 🔔 AUTO-SEND WHATSAPP (SAFE RULES)
-try {
-  const ALLOWED_STRATEGIES = ["v3", "v4"];
-  const MIN_CONFIDENCE = 0.75;
+// WHATSAPP
+router.get("/signal", auth, async (req, res) => {
+  try {
+    // build signal
+    const signal = { ... };
 
-  if (
-    ALLOWED_STRATEGIES.includes(signal.strategy) &&
-    signal.confidence >= MIN_CONFIDENCE
-  ) {
-    const users = db.read("users.json") || [];
+    // save history
+    ...
 
-    for (const user of users) {
-      if (!user.phone || !user.whatsappOptIn) continue;
+    // 🔔 AUTO-SEND WHATSAPP — MUST BE HERE
+    try {
+      const ALLOWED_STRATEGIES = ["v3", "v4"];
+      const MIN_CONFIDENCE = 0.75;
 
-      await sendWhatsApp(
-        user.phone,
-        buildTradeMessage(signal)
-      );
+      if (
+        ALLOWED_STRATEGIES.includes(signal.strategy) &&
+        signal.confidence >= MIN_CONFIDENCE
+      ) {
+        const users = db.read("users.json") || [];
+
+        for (const user of users) {
+          if (!user.phone || !user.whatsappOptIn) continue;
+
+          await sendWhatsApp(
+            user.phone,
+            buildTradeMessage(signal)
+          );
+        }
+      }
+    } catch (err) {
+      console.error("WhatsApp auto-send failed:", err.message);
     }
+
+    // respond
+    res.json(signal);
+
+  } catch (err) {
+    console.error("Signal error:", err);
+    res.status(500).json({ error: "Signal engine failure" });
   }
-} catch (err) {
-  console.error("WhatsApp auto-send failed:", err.message);
-}
+});
 
 module.exports = router;
+
 
 
