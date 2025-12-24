@@ -8,6 +8,7 @@ const {
   setActiveStrategy
 } = require("../services/strategyConfig");
 const adminAuth = require("../middleware/adminAuth");
+const { sendWhatsApp } = require("../services/whatsappService");
 
 const router = express.Router();
 
@@ -90,8 +91,6 @@ router.post("/set-strategy", (req, res) => {
   });
 });
 //test whatsapp
-const { sendWhatsApp } = require("../services/whatsappService");
-
 router.post("/test-whatsapp", adminAuth, async (req, res) => {
   try {
     const { phone } = req.body;
@@ -108,8 +107,8 @@ router.post("/test-whatsapp", adminAuth, async (req, res) => {
   }
 });
 
-
 module.exports = router;
+
 
 
 
