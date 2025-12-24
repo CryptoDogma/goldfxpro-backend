@@ -65,8 +65,19 @@ router.get("/signal", auth, async (req, res) => {
 
     // 7️⃣ Trade parameters
     const direction = result.bias;
-    const stopLoss = direction === "BUY" ? price - 10 : price + 10;
-    const takeProfit = direction === "BUY" ? price + 20 : price - 20;
+    const stopLoss =
+      result.stopLoss != null
+      ? result.stopLoss
+       : direction === "BUY"
+      ? price - 10
+        : price + 10;
+
+      const takeProfit =
+        result.takeProfit != null
+        ? result.takeProfit
+        : direction === "BUY"
+        ? price + 20
+        : price - 20;
 
     // 8️⃣ Build signal
     const signal = {
@@ -130,3 +141,4 @@ router.get("/signal", auth, async (req, res) => {
 });
 
 module.exports = router;
+
