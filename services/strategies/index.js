@@ -1,6 +1,7 @@
 const { runV1 } = require("./v1");
 const { runV2 } = require("./v2");
 const { runV3 } = require("./v3");
+const { runV4 } = require("./v4");
 
 async function runStrategy(version, context) {
   switch (version) {
@@ -10,6 +11,8 @@ async function runStrategy(version, context) {
       return runV2(context);
     case "v3":
       return runV3(context);
+      case "v4":
+      return runV4(context);
     default:
       return {
         status: "WAIT",
@@ -19,3 +22,4 @@ async function runStrategy(version, context) {
 }
 
 module.exports = { runStrategy };
+
