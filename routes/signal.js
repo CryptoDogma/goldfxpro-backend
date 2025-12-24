@@ -12,6 +12,8 @@ const { getSessionInfo } = require("../services/sessionService");
 const { calculateEMA } = require("../services/emaService");
 const { runStrategy } = require("../services/strategies");
 const { getActiveStrategy } = require("../services/strategyConfig");
+const { sendWhatsApp } = require("../services/whatsappService");
+const { buildTradeMessage } = require("../services/whatsappFormatter");
 
 
 const router = express.Router();
@@ -110,6 +112,30 @@ router.get("/signal", auth, async (req, res) => {
     res.status(500).json({ error: "Signal engine failure" });
   }
 });
+// 🔔 AUTO-SEND WHATSAPP (SAFE RULES)
+try {
+  const ALLOWED_STRATEGIES = ["v3", "v4"];
+  const MIN_CONFIDENCE = 0.75;
+
+  if (
+    ALLOWED_STRATEGIES.includes(signal.strategy) &&
+    signal.confidence >= MIN_CONFIDENCE
+  ) {
+    const users = db.read("users.json") || [];
+
+    for (const user of users) {
+      if (!user.phone || !user.whatsappOptIn) continue;
+
+      await sendWhatsApp(
+        user.phone,
+        buildTradeMessage(signal)
+      );
+    }
+  }
+} catch (err) {
+  console.error("WhatsApp auto-send failed:", err.message);
+}
 
 module.exports = router;
+
 
