@@ -89,8 +89,28 @@ router.post("/set-strategy", (req, res) => {
     activeStrategy: active
   });
 });
+//test whatsapp
+const { sendWhatsApp } = require("../services/whatsappService");
+
+router.post("/test-whatsapp", adminAuth, async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    await sendWhatsApp(
+      phone,
+      "✅ GOLD FX PRO WhatsApp integration is LIVE!"
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("WhatsApp test failed:", err);
+    res.status(500).json({ error: "WhatsApp test failed" });
+  }
+});
+
 
 module.exports = router;
+
 
 
 
