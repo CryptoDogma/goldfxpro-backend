@@ -8,13 +8,9 @@ const { detectReversalCandle } = require("../candles/reversal");
 const { getDailyATR } = require("../volatility/atr");
 
 module.exports = function runV4(context) {
-  const {
-    candles,
-    session,
-    price
-  } = context;
+  const { candles, session, price } = context;
 
-  if (!candles || candles.length < 20) {
+  if (!candles || candles.length < 30) {
     return {
       status: "WAIT",
       reason: "Insufficient candle data"
@@ -22,25 +18,23 @@ module.exports = function runV4(context) {
   }
 
   // ─────────────────────────────────────────────
-  // 1️⃣ Session first candle
+  // 1️⃣ FIRST SESSION CANDLE (CRITICAL)
   const sessionData = getSessionLevels(candles, session);
 
   if (!sessionData || !sessionData.firstCandle) {
     return {
       status: "WAIT",
-      reason: "Session candle not available"
+      reason: "Session not active"
     };
   }
 
-  const {
-    sessionHigh,
-    sessionLow
-  } = sessionData;
-
-  const sessionRange = sessionHigh - sessionLow;
+  const first = sessionData.firstCandle;
+  const firstHigh = first.high;
+  const firstLow = first.low;
+  const firstRange = firstHigh - firstLow;
 
   // ─────────────────────────────────────────────
-  // 2️⃣ ATR context (20%)
+  // 2️⃣ ATR CONTEXT (20%)
   const dailyATR = getDailyATR(candles);
   if (!dailyATR) {
     return {
@@ -49,34 +43,37 @@ module.exports = function runV4(context) {
     };
   }
 
-  if (sessionRange < dailyATR * 0.20) {
+  if (firstRange < dailyATR * 0.20) {
     return {
       status: "WAIT",
-      reason: "Session range too small vs ATR"
+      reason: "First session candle too small vs ATR"
     };
   }
 
   // ─────────────────────────────────────────────
-  // 3️⃣ Fake-out logic
-  const lastClose = candles[candles.length - 1].close;
+  // 3️⃣ FAKE-OUT LOGIC (BREAK + CLOSE BACK IN)
+  const lastCandle = candles[candles.length - 1];
+  const lastClose = lastCandle.close;
 
   const fakeBreakHigh =
-    price > sessionHigh &&
-    lastClose < sessionHigh;
+    price > firstHigh &&
+    lastClose < firstHigh;
 
   const fakeBreakLow =
-    price < sessionLow &&
-    lastClose > sessionLow;
+    price < firstLow &&
+    lastClose > firstLow;
 
   // ─────────────────────────────────────────────
-  // 4️⃣ Reversal candle
+  // 4️⃣ REVERSAL CONFIRMATION
   const reversal = detectReversalCandle(candles);
   if (!reversal) {
     return {
       status: "WAIT",
-      reason: "No reversal candle"
+      reason: "Waiting for reversal confirmation"
     };
   }
+
+  const midpoint = (firstHigh + firstLow) / 2;
 
   // ─────────────────────────────────────────────
   // 🔴 SELL SETUP
@@ -84,14 +81,15 @@ module.exports = function runV4(context) {
     return {
       status: "TRADE",
       bias: "SELL",
-      stopLoss: sessionHigh,
-      takeProfit: sessionHigh - sessionRange * 0.5,
-      confidence: 0.80,
+      stopLoss: firstHigh,
+      takeProfit: midpoint,
+      confidence: 0.82,
       quality: {
-        grade: "A",
-        score: 0.80
+        grade: "A+",
+        score: 0.82
       },
-      reason: "Session high fake-out + bearish rejection"
+      reason:
+        "Session high fake-out + ATR expansion + bearish rejection"
     };
   }
 
@@ -101,17 +99,19 @@ module.exports = function runV4(context) {
     return {
       status: "TRADE",
       bias: "BUY",
-      stopLoss: sessionLow,
-      takeProfit: sessionLow + sessionRange * 0.5,
-      confidence: 0.80,
+      stopLoss: firstLow,
+      takeProfit: midpoint,
+      confidence: 0.82,
       quality: {
-        grade: "A",
-        score: 0.80
+        grade: "A+",
+        score: 0.82
       },
-      reason: "Session low fake-out + bullish rejection"
+      reason:
+        "Session low fake-out + ATR expansion + bullish rejection"
     };
   }
 
+  // ─────────────────────────────────────────────
   return {
     status: "WAIT",
     reason: "No valid session fake-out"
