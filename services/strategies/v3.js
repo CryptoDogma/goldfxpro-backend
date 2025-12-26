@@ -14,7 +14,7 @@ const {
   priceInAnyFVG
 } = require("../structure/fvg");
 
-function runV3(context) {
+module.exports = function runV3(context) {
   const {
     price,
     candles,
@@ -32,6 +32,7 @@ function runV3(context) {
   // ─────────────────────────────────────────────
   // 1️⃣ DeMarker (14) + exit-from-extreme
   const demarkers = calculateDeMarker(candles, 14);
+
   if (!demarkers || demarkers.length < 2) {
     return {
       status: "WAIT",
@@ -46,7 +47,7 @@ function runV3(context) {
   const exitingOverbought = prevDeM >= 0.92 && currDeM < prevDeM;
 
   // ─────────────────────────────────────────────
-  // 2️⃣ EMA 10 permission (close-based)
+  // 2️⃣ EMA 10 permission
   const lastClose = candles[candles.length - 1].close;
 
   const aboveEMA = lastClose > ema10;
@@ -116,13 +117,4 @@ function runV3(context) {
     status: "WAIT",
     reason: "Conditions not aligned for Strategy v3"
   };
-}
-
-module.exports = function runV3(context) {
-  return {
-    status: "WAIT",
-    reason: "Strategy v3 scaffold"
-  };
 };
-
-
