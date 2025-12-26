@@ -1,37 +1,35 @@
 /**
  * sessionLevels.js
- * Extract first 15m candle of the session
+ * Opening Range (ORB) + Session levels for v4 / v5
  */
 
-function getSessionLevels(candles, session) {
+function getSessionLevels(candles, session, minutes = 15) {
   if (!candles || candles.length === 0) return null;
 
-  // Map session → UTC hours (adjust if needed)
-  const SESSION_HOURS = {
-    Asia: [0, 3],
-    London: [7, 10],
-    "New York": [13, 16]
-  };
-
-  const hours = SESSION_HOURS[session];
-  if (!hours) return null;
-
-  const [startHour, endHour] = hours;
-
-  const sessionCandles = candles.filter(c => {
-    const date = new Date(c.time);
-    const hour = date.getUTCHours();
-    return hour >= startHour && hour < endHour;
-  });
+  // Candles must already have session assigned
+  const sessionCandles = candles.filter(c => c.session === session);
 
   if (!sessionCandles.length) return null;
 
-  const firstCandle = sessionCandles[0];
+  // Opening Range candles (first X minutes)
+  const orbCandles = sessionCandles.slice(0, minutes);
+
+  if (orbCandles.length < minutes) return null;
+
+  let orbHigh = -Infinity;
+  let orbLow = Infinity;
+
+  for (const c of orbCandles) {
+    if (c.high > orbHigh) orbHigh = c.high;
+    if (c.low < orbLow) orbLow = c.low;
+  }
 
   return {
-    firstCandle,
-    sessionHigh: firstCandle.high,
-    sessionLow: firstCandle.low
+    session,
+    orbHigh,
+    orbLow,
+    range: orbHigh - orbLow,
+    firstCandle: orbCandles[0]
   };
 }
 
