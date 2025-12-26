@@ -1,13 +1,15 @@
 const { buildAnalysis } = require("../analysisService");
 
-module.exports = async function runV1({
-  price,
-  ema50,
-  ema200,
-  session,
-  volatility,
-  candles
-}) {
+module.exports = async function runV1(context) {
+  const {
+    price,
+    ema50,
+    ema200,
+    session,
+    volatility,
+    candles
+  } = context;
+
   const analysis = buildAnalysis({
     price,
     ema50,
@@ -20,14 +22,12 @@ module.exports = async function runV1({
   if (analysis.status !== "TRADE") {
     return {
       status: analysis.status,
-      reason: analysis.reason,
-      strategy: "v1"
+      reason: analysis.reason
     };
   }
 
   return {
     status: "TRADE",
-    strategy: "v1",
     bias: analysis.bias,
     confidence: analysis.confidence,
     quality: analysis.quality,
