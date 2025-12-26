@@ -1,6 +1,6 @@
 const { buildAnalysis } = require("../analysisService");
 
-async function runV1({
+module.exports = async function runV1({
   price,
   ema50,
   ema200,
@@ -30,15 +30,7 @@ async function runV1({
     strategy: "v1",
     bias: analysis.bias,
     confidence: analysis.confidence,
-    quality: analysis.quality
-  };
-}
-
-module.exports = function runV1(context) {
-  return {
-    status: "WAIT",
-    reason: "Strategy v1 scaffold"
+    quality: analysis.quality,
+    reason: analysis.reason
   };
 };
-
-
