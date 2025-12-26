@@ -12,6 +12,8 @@ GOLD FX PRO is not liable for any losses incurred.
 `.trim();
 
 function buildTradeMessage(signal) {
+  if (!signal) return "";
+
   if (signal.strategy === "v4") {
     return `${buildV4Message(signal)}\n\n${DISCLAIMER}`;
   }
@@ -21,26 +23,29 @@ function buildTradeMessage(signal) {
 }
 
 function buildV4Message(signal) {
+  const directionEmoji =
+    signal.direction === "BUY" ? "🟢 BUY" : "🔴 SELL";
+
   return `
 🟡 GOLD FX PRO — TRADE SIGNAL
 
 📊 Market: ${signal.pair}
 ⏱ Timeframe: ${signal.timeframe}
-📌 Strategy: v4 — Session Fake-out
+📌 Strategy: V4 — Session Fake-out
 
-${signal.direction === "BUY" ? "🟢 BUY" : "🔴 SELL"}
+${directionEmoji}
 Entry: ${signal.entry}
 Stop Loss: ${signal.stopLoss}
 Take Profit: ${signal.takeProfit}
 
 🧠 Reason:
-${signal.reasoning}
+${signal.reasoning || "Session manipulation confirmed"}
 
 🎯 Target:
 50% mean reversion of session range
 
 ⚠️ Notes:
-• Valid during ${signal.session}
+• Valid during ${signal.session || "active session"}
 • Invalidation beyond session extreme
 • Trade only with proper risk
 
@@ -49,16 +54,23 @@ ${signal.reasoning}
 }
 
 function buildDefaultMessage(signal) {
+  const directionEmoji =
+    signal.direction === "BUY" ? "🟢 BUY" : "🔴 SELL";
+
   return `
 📊 ${signal.pair} (${signal.timeframe})
-${signal.direction}
+${directionEmoji}
 
 Entry: ${signal.entry}
 SL: ${signal.stopLoss}
 TP: ${signal.takeProfit}
 
-Confidence: ${Math.round(signal.confidence * 100)}%
-Strategy: ${signal.strategy.toUpperCase()}
+Confidence: ${
+    signal.confidence != null
+      ? Math.round(signal.confidence * 100) + "%"
+      : "—"
+  }
+Strategy: ${signal.strategy?.toUpperCase() || "—"}
 `.trim();
 }
 
