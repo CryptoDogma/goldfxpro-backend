@@ -6,6 +6,33 @@ const { runStrategy } = require("../strategies");
 const { sendWhatsApp } = require("../whatsappService");
 const { buildTradeMessage } = require("../whatsappFormatter");
 
+// Hash Helper
+function buildSignalHash(signal) {
+  return [
+    signal.strategy,
+    signal.direction,
+    signal.entry,
+    signal.stopLoss,
+    signal.takeProfit
+  ].join("|");
+}
+//Last sebt hash
+function getLastSentHash() {
+  try {
+    const data = db.read("lastSentSignal.json");
+    return data?.hash || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastSentHash(hash) {
+  db.write("lastSentSignal.json", {
+    hash,
+    timestamp: new Date().toISOString()
+  });
+}
+
 /**
  * WhatsApp auto-send helper (SAFE, SINGLE POINT)
  */
@@ -146,3 +173,4 @@ async function runAllStrategies() {
 }
 
 module.exports = { runAllStrategies };
+
