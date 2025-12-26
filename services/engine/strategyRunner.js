@@ -49,6 +49,15 @@ async function autoSendWhatsApp(signal) {
       return;
     }
 
+    // 🔐 HASH CHECK
+    const currentHash = buildSignalHash(signal);
+    const lastHash = getLastSentHash();
+
+    if (currentHash === lastHash) {
+      console.log("🔁 Duplicate signal — WhatsApp NOT sent");
+      return;
+    }
+
     const users = db.read("users.json") || [];
 
     for (const user of users) {
@@ -60,9 +69,13 @@ async function autoSendWhatsApp(signal) {
       );
     }
 
+    // ✅ SAVE HASH AFTER SUCCESS
+    saveLastSentHash(currentHash);
+
     console.log(
-      `📲 WhatsApp sent → ${signal.strategy.toUpperCase()} ${signal.direction}`
+      `📲 WhatsApp SENT → ${signal.strategy.toUpperCase()} ${signal.direction}`
     );
+
   } catch (err) {
     console.error("❌ WhatsApp auto-send failed:", err.message);
   }
@@ -173,4 +186,5 @@ async function runAllStrategies() {
 }
 
 module.exports = { runAllStrategies };
+
 
