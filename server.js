@@ -1,4 +1,5 @@
 const express = require("express");
+const { startScheduler } = require("./services/scheduler");
 const cors = require("cors");
 
 const app = express();
@@ -24,6 +25,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("GOLD FX PRO API running on port", PORT);
 });
+
 
 
 
