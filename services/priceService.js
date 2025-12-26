@@ -29,7 +29,7 @@ async function getGoldPrice() {
 
 /**
  * Generic candle fetcher
- * @param {string} interval - e.g. "15min", "1h"
+ * @param {string} interval - e.g. "15min", "5min", "1h"
  * @param {number} outputSize
  */
 async function getGoldCandles(interval = "15min", outputSize = 220) {
@@ -56,7 +56,21 @@ async function getGoldCandles(interval = "15min", outputSize = 220) {
 }
 
 /**
- * H1 candles (for Strategy v2)
+ * M15 candles (default strategy timeframe)
+ */
+async function getGoldCandlesM15() {
+  return getGoldCandles("15min", 220);
+}
+
+/**
+ * M5 candles (Strategy v5 refinement / scalping)
+ */
+async function getGoldCandlesM5() {
+  return getGoldCandles("5min", 300);
+}
+
+/**
+ * H1 candles (Strategy v2 HTF bias)
  */
 async function getGoldCandlesH1() {
   return getGoldCandles("1h", 220);
@@ -65,5 +79,7 @@ async function getGoldCandlesH1() {
 module.exports = {
   getGoldPrice,
   getGoldCandles,
+  getGoldCandlesM15,
+  getGoldCandlesM5,
   getGoldCandlesH1
 };
