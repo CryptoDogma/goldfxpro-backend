@@ -14,7 +14,7 @@ module.exports = function runV4(context) {
     price
   } = context;
 
-  if (!candles || candles.length < 50) {
+  if (!candles || candles.length < 20) {
     return {
       status: "WAIT",
       reason: "Insufficient candle data"
