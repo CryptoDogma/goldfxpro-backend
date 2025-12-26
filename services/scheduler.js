@@ -1,22 +1,15 @@
-/**
- * scheduler.js
- * Runs strategy engine on interval
- */
-
-const cron = require("node-cron");
 const { runAllStrategies } = require("./engine/strategyRunner");
 
 function startScheduler() {
-  console.log("[SCHEDULER] Strategy scheduler started");
+  console.log("📅 Strategy scheduler started (5 min)");
 
-  // Run immediately on boot
-  runAllStrategies();
+  // run immediately
+  runAllStrategies().catch(console.error);
 
-  // Every 5 minutes
-  cron.schedule("*/5 * * * *", async () => {
-    console.log("[SCHEDULER] Running strategy engine");
-    await runAllStrategies();
-  });
+  // every 5 minutes
+  setInterval(() => {
+    runAllStrategies().catch(console.error);
+  }, 5 * 60 * 1000);
 }
 
 module.exports = { startScheduler };
