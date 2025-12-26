@@ -2,7 +2,7 @@ const { calculateEMA } = require("../emaService");
 const { buildAnalysis } = require("../analysisService");
 const { getGoldCandlesH1 } = require("../priceService");
 
-async function runV2({
+module.exports = async function runV2({
   price,
   ema50,
   ema200,
@@ -12,9 +12,10 @@ async function runV2({
 }) {
   // 1️⃣ Get H1 candles
   const h1Candles = await getGoldCandlesH1();
+
   if (!h1Candles || h1Candles.length < 200) {
     return {
-      status: "NO_TRADE",
+      status: "WAIT",
       reason: "Not enough H1 data",
       strategy: "v2"
     };
@@ -31,7 +32,7 @@ async function runV2({
 
   if (htfBias === "NEUTRAL") {
     return {
-      status: "NO_TRADE",
+      status: "WAIT",
       reason: "Higher timeframe neutral",
       strategy: "v2"
     };
@@ -49,7 +50,8 @@ async function runV2({
 
   if (base.status !== "TRADE") {
     return {
-      ...base,
+      status: base.status,
+      reason: base.reason,
       strategy: "v2"
     };
   }
@@ -57,7 +59,7 @@ async function runV2({
   // 3️⃣ Alignment check
   if (base.bias !== htfBias) {
     return {
-      status: "NO_TRADE",
+      status: "WAIT",
       reason: "Lower TF not aligned with H1 bias",
       strategy: "v2"
     };
@@ -75,16 +77,9 @@ async function runV2({
     bias: base.bias,
     confidence: boostedQuality.score,
     quality: boostedQuality,
+    reason: "HTF alignment confirmed",
     context: {
       htfBias
     }
   };
-}
-
-module.exports = function runV2(context) {
-  return {
-    status: "WAIT",
-    reason: "Strategy v2 scaffold"
-  };
 };
-
