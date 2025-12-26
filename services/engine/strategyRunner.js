@@ -38,7 +38,7 @@ function saveLastSentHash(hash) {
  */
 async function autoSendWhatsApp(signal) {
   try {
-    const ALLOWED_STRATEGIES = ["v3", "v4"];
+    const ALLOWED_STRATEGIES = ["v3", "v4", "v5"];
     const MIN_CONFIDENCE = 0.75;
 
     if (
@@ -104,7 +104,7 @@ async function runAllStrategies() {
   const sessionInfo = getSessionInfo();
 
   // 2️⃣ Evaluate strategies
-  const STRATEGIES = ["v1", "v2", "v3", "v4"];
+  const STRATEGIES = ["v1", "v2", "v3", "v4", "v5"];
   const results = [];
 
   for (const strategy of STRATEGIES) {
@@ -186,5 +186,6 @@ async function runAllStrategies() {
 }
 
 module.exports = { runAllStrategies };
+
 
 
