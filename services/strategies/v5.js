@@ -1,12 +1,14 @@
 /**
  * Strategy v5
  * ORB (Opening Range Breakout) + Smart Money Concepts
+ * with M5 Refinement Mode (Scalping Precision)
  */
 
 const { getSessionLevels } = require("../session/sessionLevels");
 const { detectFVGs, priceInAnyFVG } = require("../structure/fvg");
 const { detectReversalCandle } = require("../candles/reversal");
-const { buildTrade } = require("../engine/entryEngine");
+const { getGoldCandlesM5 } = require("../priceService");
+const { refineV5M5 } = require("./v5RefineM5");
 
 module.exports = async function runV5(context) {
   const {
@@ -23,7 +25,7 @@ module.exports = async function runV5(context) {
   }
 
   // ─────────────────────────────────────────────
-  // 1️⃣ SESSION OPENING RANGE
+  // 1️⃣ SESSION OPENING RANGE (ORB)
   const sessionData = getSessionLevels(candles, session);
 
   if (!sessionData || !sessionData.firstCandle) {
@@ -63,7 +65,7 @@ module.exports = async function runV5(context) {
     };
   }
 
-  const direction = breakoutUp ? "BUY" : "SELL";
+  const bias = breakoutUp ? "BUY" : "SELL";
 
   // ─────────────────────────────────────────────
   // 3️⃣ PRICE MUST RETURN INTO RANGE (FAKE-OUT)
@@ -79,15 +81,15 @@ module.exports = async function runV5(context) {
   }
 
   // ─────────────────────────────────────────────
-  // 4️⃣ SMART MONEY CONFIRMATION
+  // 4️⃣ SMART MONEY CONTEXT (M15)
   const fvgs = detectFVGs(candles);
 
   const inBullishFVG =
-    direction === "BUY" &&
+    bias === "BUY" &&
     priceInAnyFVG(price, fvgs, "bullish");
 
   const inBearishFVG =
-    direction === "SELL" &&
+    bias === "SELL" &&
     priceInAnyFVG(price, fvgs, "bearish");
 
   const reversal = detectReversalCandle(candles);
@@ -95,33 +97,41 @@ module.exports = async function runV5(context) {
   if (!inBullishFVG && !inBearishFVG && !reversal) {
     return {
       status: "WAIT",
-      reason: "No Smart Money confirmation"
+      reason: "No Smart Money confirmation (M15)"
     };
   }
 
-  let smcReason = "";
+  // ─────────────────────────────────────────────
+  // 5️⃣ M5 REFINEMENT MODE (SCALPING ENTRY)
+  const candlesM5 = await getGoldCandlesM5();
 
-  if (inBullishFVG || inBearishFVG) {
-    smcReason += "Fair Value Gap ";
-  }
+  const refine = refineV5M5({
+    bias,
+    price,
+    candlesM5,
+    orb: {
+      high: sessionHigh,
+      low: sessionLow
+    }
+  });
 
-  if (reversal) {
-    smcReason += "Reversal Candle ";
+  if (refine.status !== "TRADE") {
+    return {
+      status: "WAIT",
+      reason: refine.reason || "Refining on M5",
+      context: "M5 refinement"
+    };
   }
 
   // ─────────────────────────────────────────────
-  // 5️⃣ ENTRY + RISK ENGINE
-  const trade = buildTrade({
-    direction,
-    price,
-    sessionHigh,
-    sessionLow,
-    range,
-    smcReason
-  });
-
+  // ✅ FINAL CONFIRMED TRADE
   return {
-    ...trade,
-    reason: `ORB fake-out + ${smcReason.trim()}`
+    status: "TRADE",
+    bias,
+    confidence: refine.confidence,
+    quality: refine.quality,
+    stopLoss: refine.stopLoss,
+    takeProfit: refine.takeProfit,
+    reason: `v5 ORB fake-out + M5 refinement`
   };
 };
