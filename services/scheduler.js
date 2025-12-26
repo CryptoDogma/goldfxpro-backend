@@ -1,6 +1,6 @@
 const { runAllStrategies } = require("./engine/strategyRunner");
 const { resolveBestSignal } = require("./engine/signalResolver");
-const db = require(".utils/fileDb");
+const db = require("../utils/fileDb");
 
 function startScheduler() {
   console.log("📅 Strategy scheduler started (5 min)");
@@ -40,4 +40,5 @@ function startScheduler() {
 }
 
 module.exports = { startScheduler };
+
 
