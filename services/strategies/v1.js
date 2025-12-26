@@ -34,5 +34,11 @@ async function runV1({
   };
 }
 
-module.exports = { runV1 };
+module.exports = function runV1(context) {
+  return {
+    status: "WAIT",
+    reason: "Strategy v1 scaffold"
+  };
+};
+
 
