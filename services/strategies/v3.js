@@ -1,8 +1,3 @@
-/**
- * Strategy v3
- * Mean Reversion at Extreme + Location + EMA Permission
- */
-
 const { calculateDeMarker } = require("../indicators/demarker");
 const {
   getSwingLevels,
@@ -15,106 +10,67 @@ const {
 } = require("../structure/fvg");
 
 module.exports = function runV3(context) {
-  const {
-    price,
-    candles,
-    ema10,
-    session
-  } = context;
+  const { price, candles, ema10, session } = context;
 
   if (!candles || candles.length < 30) {
-    return {
-      status: "WAIT",
-      reason: "Not enough candle data"
-    };
+    return { status: "WAIT", reason: "Not enough candle data" };
   }
 
-  // ─────────────────────────────────────────────
-  // 1️⃣ DeMarker (14) + exit-from-extreme
-  const demarkers = calculateDeMarker(candles, 14);
-
-  if (!demarkers || demarkers.length < 2) {
-    return {
-      status: "WAIT",
-      reason: "Insufficient DeMarker data"
-    };
+  const dem = calculateDeMarker(candles, 14);
+  if (!dem || dem.length < 2) {
+    return { status: "WAIT", reason: "No DeMarker data" };
   }
 
-  const prevDeM = demarkers[demarkers.length - 2];
-  const currDeM = demarkers[demarkers.length - 1];
+  const prev = dem.at(-2);
+  const curr = dem.at(-1);
 
-  const exitingOversold = prevDeM <= 0.15 && currDeM > prevDeM;
-  const exitingOverbought = prevDeM >= 0.92 && currDeM < prevDeM;
+  const exitOversold = prev <= 0.15 && curr > prev;
+  const exitOverbought = prev >= 0.92 && curr < prev;
 
-  // ─────────────────────────────────────────────
-  // 2️⃣ EMA 10 permission
-  const lastClose = candles[candles.length - 1].close;
-
+  const lastClose = candles.at(-1).close;
   const aboveEMA = lastClose > ema10;
   const belowEMA = lastClose < ema10;
 
-  // ─────────────────────────────────────────────
-  // 3️⃣ Structure (Swing + Session)
   const swings = getSwingLevels(candles);
-  const sessionLevels = getSessionLevels(candles, session);
+  const sessionLvls = getSessionLevels(candles, session);
 
   const atSupport =
-    (swings && isNearLevel(price, swings.swingLow)) ||
-    (sessionLevels && isNearLevel(price, sessionLevels.sessionLow));
+    isNearLevel(price, swings?.swingLow) ||
+    isNearLevel(price, sessionLvls?.sessionLow);
 
   const atResistance =
-    (swings && isNearLevel(price, swings.swingHigh)) ||
-    (sessionLevels && isNearLevel(price, sessionLevels.sessionHigh));
+    isNearLevel(price, swings?.swingHigh) ||
+    isNearLevel(price, sessionLvls?.sessionHigh);
 
-  // ─────────────────────────────────────────────
-  // 4️⃣ Fair Value Gaps
   const fvgs = detectFVGs(candles);
 
-  const inBullishFVG = priceInAnyFVG(price, fvgs, "bullish");
-  const inBearishFVG = priceInAnyFVG(price, fvgs, "bearish");
-
-  // ─────────────────────────────────────────────
-  // 🟢 BUY LOGIC
   if (
-    exitingOversold &&
+    exitOversold &&
     aboveEMA &&
-    (atSupport || inBullishFVG)
+    (atSupport || priceInAnyFVG(price, fvgs, "bullish"))
   ) {
     return {
       status: "TRADE",
       bias: "BUY",
       confidence: 0.82,
-      quality: {
-        grade: "A",
-        score: 0.82
-      },
-      reason: "DeMarker exit from oversold + EMA10 hold + support/FVG"
+      quality: { grade: "A", score: 0.82 },
+      reason: "DeMarker exit + EMA10 + support/FVG"
     };
   }
 
-  // ─────────────────────────────────────────────
-  // 🔴 SELL LOGIC
   if (
-    exitingOverbought &&
+    exitOverbought &&
     belowEMA &&
-    (atResistance || inBearishFVG)
+    (atResistance || priceInAnyFVG(price, fvgs, "bearish"))
   ) {
     return {
       status: "TRADE",
       bias: "SELL",
       confidence: 0.82,
-      quality: {
-        grade: "A",
-        score: 0.82
-      },
-      reason: "DeMarker exit from overbought + EMA10 rejection + resistance/FVG"
+      quality: { grade: "A", score: 0.82 },
+      reason: "DeMarker exit + EMA10 + resistance/FVG"
     };
   }
 
-  // ─────────────────────────────────────────────
-  // ⛔ NO TRADE
-  return {
-    status: "WAIT",
-    reason: "Conditions not aligned for Strategy v3"
-  };
+  return { status: "WAIT", reason: "v3 conditions not met" };
 };
