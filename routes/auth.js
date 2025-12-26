@@ -16,15 +16,15 @@ const router = express.Router();
  * REGISTER
  * Creates a pending user and sends email verification
  */
-router.post("/register", async (req, res) => {
-  const { name, email, password, activationCode } = req.body;
+//router.post("/register", async (req, res) => {
+//  const { name, email, password, activationCode } = req.body;
 
-  if (!name || !email || !password || !activationCode) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
+//  if (!name || !email || !password || !activationCode) {
+//    return res.status(400).json({ error: "Missing required fields" });
+//  }
 
-  const users = db.read("users.json");
-  const keys = db.read("activationKeys.json");
+//  const users = db.read("users.json");
+//  const keys = db.read("activationKeys.json");
 
   // Validate activation key
   const key = keys.find(k => k.code === activationCode && !k.used);
@@ -143,3 +143,4 @@ router.post("/login", async (req, res) => {
 });
 
 module.exports = router;
+
