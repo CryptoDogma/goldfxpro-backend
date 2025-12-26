@@ -1,13 +1,3 @@
-const express = require("express");
-const bcrypt = require("bcrypt");
-const db = require("../utils/fileDb");
-const { generateLicenseKey } = require("../utils/keygen");
-
-const router = express.Router();
-
-/**
- * REGISTER USER + ACTIVATE LICENSE
- */
 router.post("/register", async (req, res) => {
   try {
     const {
@@ -19,7 +9,13 @@ router.post("/register", async (req, res) => {
       whatsappOptIn
     } = req.body;
 
-    if (!name || !email || !password || !activationCode) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !activationCode ||
+      !phone
+    ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -48,18 +44,19 @@ router.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     users.push({
+      id: crypto.randomUUID(),
       name,
       email,
       password: passwordHash,
+      phone,
+      whatsappOptIn: !!whatsappOptIn,
       verified: true,
-      phone: phone || null,
-      whatsappOptIn: Boolean(whatsappOptIn),
       createdAt: new Date().toISOString()
     });
 
     db.write("users.json", users);
 
-    // 5️⃣ Create license (30 days)
+    // 5️⃣ Create license
     const licenses = db.read("licenses.json");
     const licenseKey = generateLicenseKey();
 
@@ -76,7 +73,6 @@ router.post("/register", async (req, res) => {
 
     db.write("licenses.json", licenses);
 
-    // 6️⃣ Success
     res.json({
       success: true,
       message: "Registration successful",
@@ -89,5 +85,3 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ error: "Registration failed" });
   }
 });
-
-module.exports = router;
