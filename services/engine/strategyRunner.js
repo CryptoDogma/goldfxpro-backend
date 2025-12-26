@@ -3,7 +3,7 @@
  * Runs all strategies and selects the best signal
  */
 
-const db = require("../fileDb");
+const db = require("../../utils/fileDb");
 const { getGoldPrice, getGoldCandles } = require("../priceService");
 const { getSessionInfo } = require("../sessionService");
 const { calculateEMA } = require("../emaService");
@@ -101,3 +101,4 @@ async function runAllStrategies() {
 }
 
 module.exports = { runAllStrategies };
+
