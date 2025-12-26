@@ -1,35 +1,35 @@
 const express = require("express");
-const { startScheduler } = require("./services/scheduler");
 const cors = require("cors");
+
+// 🚀 Scheduler
+const { startScheduler } = require("./services/scheduler");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// ─────────────────────────────────────
+// ROUTES
+// ─────────────────────────────────────
 app.use("/api", require("./routes/auth"));
 app.use("/api", require("./routes/licenses"));
-app.use("/admin", require("./routes/admin"));
 app.use("/api", require("./routes/signal"));
 app.use("/api", require("./routes/history"));
+
+app.use("/admin", require("./routes/admin"));
 app.use("/admin", require("./routes/adminLicenses"));
 
-//Scheduler
-const { startScheduler } = require("./services/scheduler");
+// ─────────────────────────────────────
+// START STRATEGY SCHEDULER (ONCE)
+// ─────────────────────────────────────
 startScheduler();
 
-
+// ─────────────────────────────────────
+// SERVER
+// ─────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("GOLD FX PRO API running on port", PORT);
+  console.log("🚀 GOLD FX PRO API running on port", PORT);
 });
-
-
-
-
-
-
-
-
