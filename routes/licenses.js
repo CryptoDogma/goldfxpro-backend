@@ -7,11 +7,17 @@ const router = express.Router();
 
 /**
  * REGISTER USER + ACTIVATE LICENSE
- * Called after email verification OR direct activation (your choice)
  */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, activationCode } = req.body;
+    const {
+      name,
+      email,
+      password,
+      activationCode,
+      phone,
+      whatsappOptIn
+    } = req.body;
 
     if (!name || !email || !password || !activationCode) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -46,6 +52,8 @@ router.post("/register", async (req, res) => {
       email,
       password: passwordHash,
       verified: true,
+      phone: phone || null,
+      whatsappOptIn: Boolean(whatsappOptIn),
       createdAt: new Date().toISOString()
     });
 
