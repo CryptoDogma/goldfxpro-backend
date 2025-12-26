@@ -118,4 +118,11 @@ function runV3(context) {
   };
 }
 
-module.exports = { runV3 };
+module.exports = function runV3(context) {
+  return {
+    status: "WAIT",
+    reason: "Strategy v3 scaffold"
+  };
+};
+
+
